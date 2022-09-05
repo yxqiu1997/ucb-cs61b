@@ -1,11 +1,14 @@
 package game2048;
 
+import java.util.Arrays;
 import java.util.Formatter;
+import java.util.Objects;
 import java.util.Observable;
+import java.util.function.Predicate;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Yuxuan Qiu
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -110,7 +113,61 @@ public class Model extends Observable {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
+        // Modify this.board (and perhaps this.score) to account
+        board.setViewingPerspective(side);
+
+        for (int col = 0; col < board.size(); ++col) {
+            // Step1: move every non-empty tile in order
+            // [x, 2, 2, x] -> [2, 2, x, x] temporarily skip merging
+            for (int row = board.size() - 1; row >= 0; --row) {
+                Tile tile = board.tile(col, row);
+                if (tile != null) {
+                    // Find next empty position
+                    int nextPosition = board.size() - 1;
+                    while (nextPosition >= row) {
+                        if (board.tile(col, nextPosition) == null) {
+                            break;
+                        }
+                        --nextPosition;
+                    }
+                    // Check if this position is valid
+                    if (nextPosition >= row) {
+                        board.move(col, nextPosition, tile);
+                        changed = true;
+                    }
+                }
+            }
+            // Step2: merge
+            // [2, 2, 2, x] -> [4, x, 2, x] -> [4, 2, x, x]
+            for (int row = board.size() - 1; row >= 0; --row) {
+                Tile currentTile = board.tile(col, row);
+                int nextLine = row - 1;
+                if (nextLine < 0) {
+                    break;
+                }
+                Tile nextTile = board.tile(col, nextLine);
+                if (currentTile == null || nextTile == null) {
+                    break;
+                }
+                if (nextTile.value() == currentTile.value()) {
+                    board.move(col, row, nextTile);
+                    score += currentTile.value() * 2;
+                    for (int p = nextLine - 1; p >= 0; --p) {
+                        Tile t = board.tile(col, p);
+                        if (t == null) {
+                            break;
+                        }
+                        if (p < board.size()) {
+                            board.move(col, p + 1, t);
+                        }
+                    }
+                    changed = true;
+                }
+            }
+        }
+
+        board.setViewingPerspective(Side.NORTH);
+
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
 
@@ -137,8 +194,7 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
-        return false;
+        return satisfyPredicate(Objects::isNull, b);
     }
 
     /**
@@ -147,7 +203,17 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        return satisfyPredicate(tile -> tile != null && tile.value() == MAX_PIECE, b);
+    }
+
+    private static boolean satisfyPredicate(Predicate<Tile> predicate, Board board) {
+        for (int col = 0; col < board.size(); ++col) {
+            for (int row = 0; row < board.size(); ++row) {
+                if (predicate.test(board.tile(col, row))) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -158,8 +224,28 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
-        return false;
+        if (emptySpaceExists(b)) {
+            return true;
+        }
+        Predicate<Tile> hasAdjacentTileWithSameValue = tile -> {
+            for (Coordinate coordinate : getAdjacentCoordinates(tile, b.size())) {
+                if (b.tile(coordinate.col, coordinate.row).value() == tile.value()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        return satisfyPredicate(hasAdjacentTileWithSameValue, b);
+    }
+
+    private static Coordinate[] getAdjacentCoordinates(Tile tile, int size) {
+        Coordinate[] coordinates = Coordinate.of(new int[][] {
+                {tile.col() - 1, tile.row()}, {tile.col() + 1, tile.row()},
+                {tile.col(), tile.row() - 1}, {tile.col(), tile.row() + 1}
+        });
+        return Arrays.stream(coordinates).filter(coordinate ->
+                coordinate.col >= 0 && coordinate.col < size
+                        && coordinate.row >= 0 && coordinate.row < size).toArray(Coordinate[]::new);
     }
 
 
@@ -199,5 +285,25 @@ public class Model extends Observable {
     /** Returns hash code of Model’s string. */
     public int hashCode() {
         return toString().hashCode();
+    }
+
+    private static class Coordinate {
+
+        public int col;
+
+        public int row;
+
+        public Coordinate(int col, int row) {
+            this.col = col;
+            this.row = row;
+        }
+
+        public static Coordinate[] of(int[][] values) {
+            Coordinate[] coordinates = new Coordinate[values.length];
+            for (int i = 0; i < values.length; ++i) {
+                coordinates[i] = new Coordinate(values[i][0], values[i][1]);
+            }
+            return coordinates;
+        }
     }
 }
