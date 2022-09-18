@@ -42,10 +42,8 @@ public class TestBuggyAList {
                 broken.addLast(randVal);
             } else if (operationNumber == 1) {
                 // size
-                int size = correct.size();
                 assertEquals(correct.size(), broken.size());
             } else if (correct.size() <= 0) {
-                continue;
             } else if (operationNumber == 2) {
                 // getLast
                 assertEquals(correct.getLast(), broken.getLast());
