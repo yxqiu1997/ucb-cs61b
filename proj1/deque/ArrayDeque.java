@@ -120,9 +120,10 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         }
         int index = nextFirst + 1;
         for (int i = 0; i < size; ++i) {
-            if (deque.get(i) != items[index++]) {
+            if (!items[index].equals(deque.get(i))) {
                 return false;
             }
+            ++index;
         }
         return true;
     }
