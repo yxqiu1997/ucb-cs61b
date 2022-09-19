@@ -106,23 +106,19 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null) {
+        if (!(o instanceof Deque)) {
             return false;
         }
-        if (o == this) {
-            return true;
-        }
-        if (!(o instanceof LinkedListDeque)) {
+        Deque deque = (Deque) o;
+        if (deque.size() != size) {
             return false;
         }
-        LinkedListDeque<?> deque = (LinkedListDeque<?>) o;
-        if (deque.size != size) {
-            return false;
-        }
+        Node pointer = head.next;
         for (int i = 0; i < size; ++i) {
-            if (deque.get(i) != get(i)) {
+            if (!pointer.item.equals(deque.get(i))) {
                 return false;
             }
+            pointer = pointer.next;
         }
         return true;
     }
@@ -176,7 +172,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         }
 
         public boolean hasNext() {
-            return pointer == head;
+            return pointer != head;
         }
 
         public T next() {
