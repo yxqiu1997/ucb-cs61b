@@ -1,7 +1,8 @@
 package gitlet;
 
 /** Driver class for Gitlet, a subset of the Git version-control system.
- *  @author TODO
+ *
+ *  @author Qiu Yuxuan
  */
 public class Main {
 
@@ -9,16 +10,21 @@ public class Main {
      *  <COMMAND> <OPERAND1> <OPERAND2> ... 
      */
     public static void main(String[] args) {
-        // TODO: what if args is empty?
+        if (args == null || args.length == 0) {
+            System.out.println("Please enter a command.");
+            System.exit(0);
+        }
         String firstArg = args[0];
+        Repository repository = new Repository();
         switch(firstArg) {
             case "init":
-                // TODO: handle the `init` command
+                repository.checkOperands(args.length, 1);
+                repository.init();
                 break;
             case "add":
                 // TODO: handle the `add [filename]` command
                 break;
-            // TODO: FILL THE REST IN
+            default:
         }
     }
 }
