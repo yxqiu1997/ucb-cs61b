@@ -22,7 +22,9 @@ public class Main {
                 repository.init();
                 break;
             case "add":
-                // TODO: handle the `add [filename]` command
+                repository.checkOperands(args.length, 2);
+                repository.checkInitialiseDirectoryExists();
+                repository.add(args[1]);
                 break;
             default:
         }
