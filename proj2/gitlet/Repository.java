@@ -59,7 +59,8 @@ public class Repository {
 
         // Create master branch
         Utils.writeContents(HEAD, "master");
-        Utils.writeContents(HEADS_DIR, "master");
+        File master = Utils.join(HEADS_DIR, "master");
+        Utils.writeContents(master, initialCommit.getId());
 
         // Create HEAD
         Utils.writeContents(HEAD, "master");
