@@ -1,89 +1,199 @@
 package gitlet;
 
+import java.io.File;
 import java.io.Serializable;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-/** Represents a gitlet commit object.
+import static gitlet.MyUtils.getObjectFile;
+import static gitlet.MyUtils.saveObjectFile;
+import static gitlet.Utils.readObject;
+import static gitlet.Utils.sha1;
+
+/**
+ * The commit object.
  *
- *  @author Qiu Yuxuan
+ * @author Exuanbo
  */
 public class Commit implements Serializable {
-    /**
-     * List all instance variables of the Commit class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided one example for `message`.
-     */
 
-    /** The message of this Commit. */
+    /**
+     * The created date.
+     */
+    private final Date date;
+
+    /**
+     * The message of this Commit.
+     */
     private final String message;
 
-    private final Date timestamp;
-
-    private final String id;
-
+    /**
+     * The parent commits SHA1 id.
+     */
     private final List<String> parents;
 
-    private final Map<String, String> blobs;
+    /**
+     * The tracked files Map with file path as key and SHA1 id as value.
+     */
+    private final Map<String, String> tracked;
 
-    public Commit() {
-        this.message = "initial commit";
-        this.timestamp = new Date(0);
-        this.parents = new LinkedList<>();
-        this.blobs = new HashMap<>();
-        this.id = Utils.sha1(message, timestamp.toString(), parents.toString(), blobs.toString());
-    }
+    /**
+     * The SHA1 id.
+     */
+    private final String id;
 
-    public Commit(String message, List<Commit> parents, Stage stage) {
+    /**
+     * The file of this instance with the path generated from SHA1 id.
+     */
+    private final File file;
+
+    public Commit(String message, List<String> parents, Map<String, String> trackedFilesMap) {
+        date = new Date();
         this.message = message;
-        this.timestamp = new Date();
-        this.parents = new ArrayList<>();
-        for (Commit commit : parents) {
-            this.parents.add(commit.getId());
-        }
-        this.blobs = parents.get(0).getBlobs();
-        this.blobs.putAll(stage.getAdded());
-        for (String filename : stage.getRemoved()) {
-            this.blobs.remove(filename);
-        }
-        this.id = Utils.sha1(message, timestamp.toString(), parents.toString(), blobs.toString());
+        this.parents = parents;
+        this.tracked = trackedFilesMap;
+        id = generateId();
+        file = getObjectFile(id);
     }
 
-    public String getId() {
-        return id;
+    /**
+     * Initial commit.
+     */
+    public Commit() {
+        date = new Date(0);
+        message = "initial commit";
+        parents = new ArrayList<>();
+        tracked = new HashMap<>();
+        id = generateId();
+        file = getObjectFile(id);
     }
 
-    public Map<String, String> getBlobs() {
-        return blobs;
+    /**
+     * Get a Commit instance from the file with the SHA1 id.
+     *
+     * @param id SHA1 id
+     * @return Commit instance
+     */
+    public static Commit fromFile(String id) {
+        return readObject(getObjectFile(id), Commit.class);
     }
 
+    /**
+     * Generate a SHA1 id from timestamp, message, parents Array and tracked files Map.
+     *
+     * @return SHA1 id
+     */
+    private String generateId() {
+        return sha1(getTimestamp(), message, parents.toString(), tracked.toString());
+    }
+
+    /**
+     * Save this Commit instance to file in objects folder.
+     */
+    public void save() {
+        saveObjectFile(file, this);
+    }
+
+    /**
+     * Get the Date instance when the commit is created.
+     *
+     * @return Date instance
+     */
+    public Date getDate() {
+        return date;
+    }
+
+    /**
+     * Get the timestamp.
+     *
+     * @return Date and time
+     */
+    public String getTimestamp() {
+        // Thu Jan 1 00:00:00 1970 +0000
+        DateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH);
+        return dateFormat.format(date);
+    }
+
+    /**
+     * Get the commit message.
+     *
+     * @return Commit message
+     */
     public String getMessage() {
         return message;
     }
 
+    /**
+     * Get the parent commit ids.
+     *
+     * @return Array of parent commit ids.
+     */
     public List<String> getParents() {
         return parents;
     }
 
-    public String getFirstParentId() {
-        return this.parents == null || this.parents.isEmpty() ? "null" : this.parents.get(0);
+    /**
+     * Get the tracked files Map with file path as key and SHA1 id as value.
+     *
+     * @return Map with file path as key and SHA1 id as value
+     */
+    public Map<String, String> getTracked() {
+        return tracked;
     }
 
-    public String getTimeStampString() {
-        return new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH)
-                .format(this.timestamp);
-    }
-
-    public String getCommitInfo() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("===\n");
-        sb.append("commit ").append(this.id).append("\n");
-        if (parents.size() == 2) {
-            sb.append("Merge: ").append(parents.get(0).substring(0, 7)).append(" ");
-            sb.append(parents.get(1).substring(0, 7)).append("\n");
+    /**
+     * Restore the tracked file.
+     *
+     * @param filePath Path of the file
+     * @return true if file exists in commit
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public boolean restoreTracked(String filePath) {
+        String blobId = tracked.get(filePath);
+        if (blobId == null) {
+            return false;
         }
-        sb.append("Date: ").append(this.getTimeStampString()).append("\n");
-        sb.append(this.message).append("\n\n");
-        return sb.toString();
+        Blob.fromFile(blobId).writeContentToSource();
+        return true;
+    }
+
+    /**
+     * Restore all tracked files, overwriting the existing ones.
+     */
+    public void restoreAllTracked() {
+        for (String blobId : tracked.values()) {
+            Blob.fromFile(blobId).writeContentToSource();
+        }
+    }
+
+    /**
+     * Get the SHA1 id.
+     *
+     * @return SHA1 id
+     */
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Get the commit log.
+     *
+     * @return Log content
+     */
+    public String getLog() {
+        StringBuilder logBuilder = new StringBuilder();
+        logBuilder.append("===").append("\n");
+        logBuilder.append("commit").append(" ").append(id).append("\n");
+        if (parents.size() > 1) {
+            logBuilder.append("Merge:");
+            for (String parent : parents) {
+                logBuilder.append(" ").append(parent, 0, 7);
+            }
+            logBuilder.append("\n");
+        }
+        logBuilder.append("Date:").append(" ").append(getTimestamp()).append("\n");
+        logBuilder.append(message).append("\n");
+        return logBuilder.toString();
     }
 }

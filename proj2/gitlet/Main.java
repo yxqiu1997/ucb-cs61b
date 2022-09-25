@@ -1,100 +1,137 @@
 package gitlet;
 
-/** Driver class for Gitlet, a subset of the Git version-control system.
+import static gitlet.MyUtils.exit;
+
+/**
+ * Driver class for Gitlet, a subset of the Git version-control system.
  *
- *  @author Qiu Yuxuan
+ * @author Exuanbo
  */
 public class Main {
 
-    /** Usage: java gitlet.Main ARGS, where ARGS contains
-     *  <COMMAND> <OPERAND1> <OPERAND2> ... 
+    /**
+     * Usage: java gitlet.Main ARGS, where ARGS contains
+     * <COMMAND> <OPERAND1> <OPERAND2> ...
      */
     public static void main(String[] args) {
-        if (args == null || args.length == 0) {
-            System.out.println("Please enter a command.");
-            System.exit(0);
+        if (args.length == 0) {
+            exit("Please enter a command.");
         }
+
         String firstArg = args[0];
-        Repository repository = new Repository();
-        switch(firstArg) {
-            case "init":
-                repository.checkOperands(args.length, 1);
-                repository.init();
-                break;
-            case "add":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.add(args[1]);
-                break;
-            case "commit":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.commit(args[1]);
-                break;
-            case "rm":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.rm(args[1]);
-                break;
-            case "log":
-                repository.checkOperands(args.length, 1);
-                repository.checkInitialiseDirectoryExists();
-                repository.log();
-                break;
-            case "global-log":
-                repository.checkOperands(args.length, 1);
-                repository.checkInitialiseDirectoryExists();
-                repository.globalLog();
-                break;
-            case "find":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.find(args[1]);
-                break;
-            case "status":
-                repository.checkOperands(args.length, 1);
-                repository.checkInitialiseDirectoryExists();
-                repository.status();
-                break;
-            case "checkout":
-                repository.checkInitialiseDirectoryExists();
-                if (args.length == 2) {
-                    // java gitlet.Main checkout [branch name]
-                    repository.checkoutBranch(args[1]);
-                } else if (args.length == 3) {
-                    // java gitlet.Main checkout -- [file name]
-                    repository.checkOperands(args[1], "--");
-                    repository.checkoutFileFromHead(args[2]);
-                } else if (args.length == 4) {
-                    // java gitlet.Main checkout [commit id] -- [file name]
-                    repository.checkOperands(args[2], "--");
-                    repository.checkoutFileFromCommitId(args[1], args[3]);
-                } else {
-                    System.out.println("Incorrect operands.");
-                    System.exit(0);
+        switch (firstArg) {
+            case "init" -> {
+                validateNumArgs(args, 1);
+                Repository.init();
+            }
+            case "add" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String fileName = args[1];
+                new Repository().add(fileName);
+            }
+            case "commit" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String message = args[1];
+                if (message.length() == 0) {
+                    exit("Please enter a commit message.");
                 }
-                break;
-            case "branch":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.branch(args[1]);
-                break;
-            case "rm-branch":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.rmBranch(args[1]);
-                break;
-            case "reset":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.reset(args[1]);
-                break;
-            case "merge":
-                repository.checkOperands(args.length, 2);
-                repository.checkInitialiseDirectoryExists();
-                repository.merge(args[1]);
-                break;
-            default:
+                new Repository().commit(message);
+            }
+            case "rm" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String fileName = args[1];
+                new Repository().remove(fileName);
+            }
+            case "log" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 1);
+                new Repository().log();
+            }
+            case "global-log" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 1);
+                Repository.globalLog();
+            }
+            case "find" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String message = args[1];
+                if (message.length() == 0) {
+                    exit("Found no commit with that message.");
+                }
+                Repository.find(message);
+            }
+            case "status" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 1);
+                new Repository().status();
+            }
+            case "checkout" -> {
+                Repository.checkWorkingDir();
+                Repository repository = new Repository();
+                switch (args.length) {
+                    case 3 -> {
+                        if (!args[1].equals("--")) {
+                            exit("Incorrect operands.");
+                        }
+                        String fileName = args[2];
+                        repository.checkout(fileName);
+                    }
+                    case 4 -> {
+                        if (!args[2].equals("--")) {
+                            exit("Incorrect operands.");
+                        }
+                        String commitId = args[1];
+                        String fileName = args[3];
+                        repository.checkout(commitId, fileName);
+                    }
+                    case 2 -> {
+                        String branch = args[1];
+                        repository.checkoutBranch(branch);
+                    }
+                    default -> exit("Incorrect operands.");
+                }
+            }
+            case "branch" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String branchName = args[1];
+                new Repository().branch(branchName);
+            }
+            case "rm-branch" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String branchName = args[1];
+                new Repository().rmBranch(branchName);
+            }
+            case "reset" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String commitId = args[1];
+                new Repository().reset(commitId);
+            }
+            case "merge" -> {
+                Repository.checkWorkingDir();
+                validateNumArgs(args, 2);
+                String branchName = args[1];
+                new Repository().merge(branchName);
+            }
+            default -> exit("No command with that name exists.");
+        }
+    }
+
+    /**
+     * Checks the number of arguments versus the expected number.
+     *
+     * @param args Argument array from command line
+     * @param n    Number of expected arguments
+     */
+    private static void validateNumArgs(String[] args, int n) {
+        if (args.length != n) {
+            exit("Incorrect operands.");
         }
     }
 }

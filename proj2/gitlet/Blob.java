@@ -4,43 +4,106 @@ import java.io.File;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 
+import static gitlet.MyUtils.getObjectFile;
+import static gitlet.MyUtils.saveObjectFile;
+import static gitlet.Utils.*;
+
+/**
+ * Represent the file object.
+ *
+ * @author Exuanbo
+ */
+@SuppressWarnings("PrimitiveArrayArgumentToVarargsMethod")
 public class Blob implements Serializable {
 
-    private String id;
+    /**
+     * The source file from constructor.
+     */
+    private final File source;
 
-    private String filename;
+    /**
+     * The content of the source file.
+     */
+    private final byte[] content;
 
-    private byte[] contents;
+    /**
+     * The SHA1 id generated from the source file content.
+     */
+    private final String id;
 
-    public Blob(String filename, File CWD) {
-        this.filename = filename;
-        File file = Utils.join(CWD, filename);
-        if (file.exists()) {
-            this.contents = Utils.readContents(file);
-            this.id = Utils.sha1(filename, contents);
-        } else {
-            this.contents = null;
-            this.id = Utils.sha1(filename);
-        }
+    /**
+     * The file of this instance with the path generated from SHA1 id.
+     */
+    private final File file;
+
+    public Blob(File sourceFile) {
+        source = sourceFile;
+        String filePath = sourceFile.getPath();
+        content = readContents(sourceFile);
+        id = sha1(filePath, content);
+        file = getObjectFile(id);
     }
 
-    public boolean isExist() {
-        return this.contents != null;
+    /**
+     * Generate SH1 id.
+     *
+     * @param sourceFile File instance
+     * @return SHA1 id
+     */
+    public static String generateId(File sourceFile) {
+        String filePath = sourceFile.getPath();
+        byte[] fileContent = readContents(sourceFile);
+        return sha1(filePath, fileContent);
     }
 
+    /**
+     * Get a Blob instance from the file with the SHA1 id.
+     *
+     * @param id SHA1 id
+     * @return Blob instance
+     */
+    public static Blob fromFile(String id) {
+        return readObject(getObjectFile(id), Blob.class);
+    }
+
+    /**
+     * Save this Blob instance to file in objects folder.
+     */
+    public void save() {
+        saveObjectFile(file, this);
+    }
+
+    /**
+     * Get the blob content as String.
+     *
+     * @return Blob content
+     */
+    public String getContentAsString() {
+        return new String(content, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Write the file content back to the source file.
+     */
+    public void writeContentToSource() {
+        writeContents(source, content);
+    }
+
+    /**
+     * Get the SHA1 id generated from the source file content.
+     *
+     * @return SHA1 id
+     */
     public String getId() {
         return id;
     }
 
-    public byte[] getContents() {
-        return contents;
-    }
-
-    public String getFilename() {
-        return filename;
-    }
-
-    public String getContentAsString() {
-        return new String(contents, StandardCharsets.UTF_8);
+    /**
+     * Get the Blob file.
+     *
+     * @return File instance
+     */
+    public File getFile() {
+        return file;
     }
 }
