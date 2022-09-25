@@ -20,7 +20,7 @@ public class Blob implements Serializable {
         this.contents = Utils.readContents(filename);
         this.filePath = filename.getPath();
         this.id = Utils.sha1(filePath, contents);
-        this.blobSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
+        this.blobSaveFilename = Utils.join(Repository.BLOBS_DIR, id);
     }
 
     public void save() {

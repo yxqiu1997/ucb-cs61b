@@ -41,7 +41,7 @@ public class Commit implements Serializable {
         this.filePathToBlobId = new HashMap<>();
         this.parents = new ArrayList<>();
         this.id = Utils.sha1(message, timeStamp, filePathToBlobId.toString(), parents.toString());
-        this.commitSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
+        this.commitSaveFilename = Utils.join(Repository.COMMITS_DIR, id);
     }
 
     public Commit(String message, Map<String, String> filePathToBlobId, List<String> parents) {
@@ -50,7 +50,7 @@ public class Commit implements Serializable {
         this.parents = parents;
         this.timeStamp = dateToTimeStamp(new Date());
         this.id = Utils.sha1(message, timeStamp, filePathToBlobId.toString(), parents.toString());
-        this.commitSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
+        this.commitSaveFilename = Utils.join(Repository.COMMITS_DIR, id);
     }
 
     public void save() {
@@ -90,7 +90,7 @@ public class Commit implements Serializable {
         List<String> filename = new ArrayList<>();
         List<Blob> blobList = new ArrayList<>();
         for (String blobId : filePathToBlobId.values()) {
-            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, blobId), Blob.class);
+            Blob blob = Utils.readObject(Utils.join(Repository.BLOBS_DIR, blobId), Blob.class);
             blobList.add(blob);
         }
 
@@ -104,7 +104,7 @@ public class Commit implements Serializable {
         File file = join(CWD, filename);
         String path = file.getPath();
         String blobId = filePathToBlobId.get(path);
-        return Utils.readObject(Utils.join(Repository.OBJECTS_DIR, blobId), Blob.class);
+        return Utils.readObject(Utils.join(Repository.BLOBS_DIR, blobId), Blob.class);
     }
 
     public List<String> getBlobIdList() {

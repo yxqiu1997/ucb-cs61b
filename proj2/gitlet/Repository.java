@@ -32,6 +32,11 @@ public class Repository {
     public static final File GITLET_DIR = join(CWD, ".gitlet");
 
     public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+
+    public static final File COMMITS_DIR = join(OBJECTS_DIR, "commits");
+
+    public static final File BLOBS_DIR = join(OBJECTS_DIR, "blobs");
+
     public static final File REFS_DIR = join(GITLET_DIR, "refs");
 
     public static final File HEADS_DIR = join(REFS_DIR, "heads");
@@ -57,7 +62,7 @@ public class Repository {
             System.exit(0);
         }
         if (!GITLET_DIR.mkdir() || !OBJECTS_DIR.mkdir() || !REFS_DIR.mkdir()
-                || !HEADS_DIR.mkdir()) {
+                || !HEADS_DIR.mkdir() || !COMMITS_DIR.mkdir() || !BLOBS_DIR.mkdir()) {
             throw new IllegalArgumentException("Failed to create directory");
         }
         // Initialise commit
@@ -125,7 +130,7 @@ public class Repository {
     private static Commit getCurrentCommit() {
         String currentBranchName = getCurrentBranch();
         String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranchName));
-        File currentCommitFile = join(OBJECTS_DIR, currentCommitId);
+        File currentCommitFile = join(COMMITS_DIR, currentCommitId);
         return readObject(currentCommitFile, Commit.class);
     }
 
@@ -215,13 +220,13 @@ public class Repository {
 
     private static Blob getBlobByFilePath(String filePath, Commit commit) {
         String blobId = commit.getFilePathToBlobId().get(filePath);
-        return readObject(join(Repository.OBJECTS_DIR, blobId), Blob.class);
+        return readObject(join(Repository.BLOBS_DIR, blobId), Blob.class);
     }
 
     public static void log() {
         String currentBranchName = getCurrentBranch();
         String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranchName));
-        currentCommit = readObject(join(OBJECTS_DIR, currentCommitId), Commit.class);
+        currentCommit = readObject(join(COMMITS_DIR, currentCommitId), Commit.class);
         while (!currentCommit.getParents().isEmpty()) {
             if (isMergeCommit(currentCommit)) {
                 printMergeCommit(currentCommit);
@@ -235,14 +240,14 @@ public class Repository {
     }
 
     private static Commit getCommitById(String commitId) {
-        if (commitId.length() == 40) {
-            File commitFile = join(OBJECTS_DIR, commitId);
+        if (commitId.length() == UID_LENGTH) {
+            File commitFile = join(COMMITS_DIR, commitId);
             return !commitFile.exists() ? null : readObject(commitFile, Commit.class);
         }
-        List<String> objectIdList = plainFilenamesIn(OBJECTS_DIR);
+        List<String> objectIdList = plainFilenamesIn(COMMITS_DIR);
         for (String o : Objects.requireNonNull(objectIdList)) {
             if (commitId.equals(o.substring(0, commitId.length()))) {
-                return readObject(join(OBJECTS_DIR, o), Commit.class);
+                return readObject(join(COMMITS_DIR, o), Commit.class);
             }
         }
         return null;
@@ -273,30 +278,24 @@ public class Repository {
     }
 
     public static void globalLog() {
-        List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
+        List<String> commitList = plainFilenamesIn(COMMITS_DIR);
         for (String id : commitList) {
-            try {
-                Commit commit = getCommitById(id);
-                if (isMergeCommit(commit)) {
-                    printMergeCommit(commit);
-                } else {
-                    printCommit(commit);
-                }
-            } catch (Exception ignored) {
+            Commit commit = getCommitById(id);
+            if (isMergeCommit(commit)) {
+                printMergeCommit(commit);
+            } else {
+                printCommit(commit);
             }
         }
     }
 
     public static void find(String message) {
-        List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
+        List<String> commitList = plainFilenamesIn(COMMITS_DIR);
         List<String> idList = new ArrayList<>();
         for (String id : Objects.requireNonNull(commitList)) {
-            try {
-                Commit commit = getCommitById(id);
-                if (message.equals(commit.getMessage())) {
-                    idList.add(id);
-                }
-            } catch (Exception ignored) {
+            Commit commit = getCommitById(id);
+            if (message.equals(commit.getMessage())) {
+                idList.add(id);
             }
         }
         if (idList.isEmpty()) {
@@ -600,19 +599,19 @@ public class Repository {
         Map<String, String> mergedCommitBlobs = newCommit.getFilePathToBlobId();
         if (!overwriteFileList.isEmpty()) {
             for (String blobID : overwriteFileList) {
-                Blob blob = readObject(join(OBJECTS_DIR, blobID), Blob.class);
+                Blob blob = readObject(join(BLOBS_DIR, blobID), Blob.class);
                 mergedCommitBlobs.put(blob.getFilePath(), blobID);
             }
         }
         if (!writeFileList.isEmpty()) {
             for (String blobID : writeFileList) {
-                Blob blob = readObject(join(OBJECTS_DIR, blobID), Blob.class);
+                Blob blob = readObject(join(BLOBS_DIR, blobID), Blob.class);
                 mergedCommitBlobs.put(blob.getFilePath(), blobID);
             }
         }
         if (!deleteFileList.isEmpty()) {
             for (String blobID : overwriteFileList) {
-                Blob blob = readObject(join(OBJECTS_DIR, blobID), Blob.class);
+                Blob blob = readObject(join(BLOBS_DIR, blobID), Blob.class);
                 mergedCommitBlobs.remove(blob.getFilePath());
             }
         }
@@ -627,7 +626,7 @@ public class Repository {
 
         boolean conflict = false;
         for (String blobID : fileList) {
-            String path = readObject(join(OBJECTS_DIR, blobID), Blob.class).getFilePath();
+            String path = readObject(join(BLOBS_DIR, blobID), Blob.class).getFilePath();
             int commonPath = 0;
             if (splitPointMap.containsKey(path)) {
                 commonPath += 1;
@@ -651,7 +650,7 @@ public class Repository {
                 String currBranchContents = "";
                 if (newCommitMap.containsKey(path)) {
                     Blob newCommitBlob = readObject(
-                            join(OBJECTS_DIR, newCommitMap.get(path)), Blob.class);
+                            join(BLOBS_DIR, newCommitMap.get(path)), Blob.class);
                     currBranchContents = new String(newCommitBlob.getContents(),
                             StandardCharsets.UTF_8);
                 }
@@ -659,14 +658,14 @@ public class Repository {
                 String givenBranchContents = "";
                 if (mergeCommitMap.containsKey(path)) {
                     Blob mergeCommitBlob = readObject(
-                            join(OBJECTS_DIR, mergeCommitMap.get(path)), Blob.class);
+                            join(BLOBS_DIR, mergeCommitMap.get(path)), Blob.class);
                     givenBranchContents = new String(mergeCommitBlob.getContents(),
                             StandardCharsets.UTF_8);
                 }
 
                 String conflictContents = "<<<<<<< HEAD\n" + currBranchContents + "=======\n"
                         + givenBranchContents + ">>>>>>>\n";
-                String fileName = readObject(join(OBJECTS_DIR, blobID), Blob.class)
+                String fileName = readObject(join(BLOBS_DIR, blobID), Blob.class)
                         .getFilename().getName();
                 File conflictFile = join(CWD, fileName);
                 writeContents(conflictFile, conflictContents);
@@ -680,7 +679,7 @@ public class Repository {
     private static List<String> changeBlobIdListToFilenameList(List<String> blobIdList) {
         List<String> fileNameList = new ArrayList<>();
         for (String id : blobIdList) {
-            Blob blob = readObject(join(OBJECTS_DIR, id), Blob.class);
+            Blob blob = readObject(join(BLOBS_DIR, id), Blob.class);
             fileNameList.add(blob.getFilename().getName());
         }
         return fileNameList;
