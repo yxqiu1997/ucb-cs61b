@@ -3,66 +3,45 @@ package gitlet;
 import java.io.File;
 import java.io.Serializable;
 
-import static gitlet.MyUtiles.mkdir;
-import static gitlet.Repository.OBJECT_DIR;
-import static gitlet.Utils.*;
-
 public class Blob implements Serializable {
 
     private String id;
 
-    private byte[] bytes;
+    private byte[] contents;
 
-    private File fileName;
+    private File filename;
 
     private String filePath;
 
-    private File blobSaveFileName;
+    private File blobSaveFilename;
 
-
-    public Blob(File fileName) {
-        this.fileName = fileName;
-        this.bytes = readFile();
-        this.filePath = fileName.getPath();
-        this.id = generateID();
-        this.blobSaveFileName = generateBlobSaveFileName();
-    }
-
-    public String getBlobID() {
-        return id;
-    }
-
-    public byte[] getBytes() {
-        return bytes;
-    }
-
-    public String getPath() {
-        return filePath;
-    }
-
-    public File getBlobSaveFileName() {
-        return blobSaveFileName;
-    }
-
-    public String getFileName(){
-        return fileName.getName();
-    }
-
-    private byte[] readFile() {
-        return readContents(fileName);
-    }
-
-    private String generateID() {
-        return sha1(filePath, bytes);
-    }
-
-
-    private File generateBlobSaveFileName() {
-        return join(OBJECT_DIR, id);
+    public Blob(File filename) {
+        this.filename = filename;
+        this.contents = Utils.readContents(filename);
+        this.filePath = filename.getPath();
+        this.id = Utils.sha1(filePath, contents);
+        this.blobSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
     }
 
     public void save() {
-        writeObject(blobSaveFileName, this);
+        Utils.writeObject(blobSaveFilename, this);
     }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public File getFilename() {
+        return filename;
+    }
+
+    public byte[] getContents() {
+        return contents;
+    }
+
 
 }

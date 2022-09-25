@@ -1,87 +1,70 @@
 package gitlet;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static gitlet.Repository.OBJECT_DIR;
-import static gitlet.Utils.*;
-
 public class Stage implements Serializable {
 
+    private final Map<String, String> filenameToBlobId;
 
-    private Map<String, String> pathToBlobID = new HashMap<>();
+    public Stage() {
+        this.filenameToBlobId = new HashMap<>();
+    }
 
+    public Map<String, String> getFilenameToBlobId() {
+        return filenameToBlobId;
+    }
 
-    public boolean isNewBlob(Blob blob) {
-        if (!pathToBlobID.containsValue((blob.getBlobID()))) {
-            return true;
-        }
-        return false;
+    public boolean isNew(Blob blob) {
+        return !filenameToBlobId.containsValue(blob.getId());
     }
 
     public boolean isFilePathExists(String path) {
-        if (pathToBlobID.containsKey(path)) {
-            return true;
-        }
-        return false;
+        return filenameToBlobId.containsKey(path);
     }
 
     public void delete(Blob blob) {
-        pathToBlobID.remove(blob.getPath());
+        filenameToBlobId.remove(blob.getFilePath());
     }
 
     public void delete(String path) {
-        pathToBlobID.remove(path);
+        filenameToBlobId.remove(path);
     }
 
     public void add(Blob blob) {
-        pathToBlobID.put(blob.getPath(), blob.getBlobID());
+        filenameToBlobId.put(blob.getFilePath(), blob.getId());
     }
 
     public void saveAddStage() {
-        writeObject(Repository.ADDSTAGE_FILE, this);
+        Utils.writeObject(Repository.ADD_STAGE_FILE, this);
     }
 
     public void saveRemoveStage() {
-        writeObject(Repository.REMOVESTAGE_FILE, this);
-    }
-
-    public void clear() {
-        pathToBlobID.clear();
+        Utils.writeObject(Repository.REMOVE_STAGE_FILE, this);
     }
 
     public List<Blob> getBlobList() {
-        Blob blob;
         List<Blob> blobList = new ArrayList<>();
-        for (String id : pathToBlobID.values()) {
-            blob = getBlobByID(id);
+        for (String id : filenameToBlobId.values()) {
+            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, id), Blob.class);
             blobList.add(blob);
         }
         return blobList;
     }
 
-    public static Blob getBlobByID(String id) {
-        File BLOB_FILE = join(OBJECT_DIR, id);
-        return readObject(BLOB_FILE, Blob.class);
+    public void clear() {
+        filenameToBlobId.clear();
     }
 
-    public Map<String, String> getBlobMap() {
-        return this.pathToBlobID;
-    }
-
-    public boolean exists(String fileName) {
-        return getBlobMap().containsKey(fileName);
-    }
-
-    public Blob getBlobByPath(String path) {
-        return getBlobByID(pathToBlobID.get(path));
+    public boolean exists(String filename) {
+        return filenameToBlobId.containsKey(filename);
     }
 
     public boolean isEmpty() {
-        return getBlobMap().size() == 0;
+        return filenameToBlobId.size() == 0;
     }
+
 }

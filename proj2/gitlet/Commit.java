@@ -1,79 +1,81 @@
 package gitlet;
 
-// TODO: any imports you need here
-
 import java.io.File;
 import java.io.Serializable;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static gitlet.MyUtiles.mkdir;
 import static gitlet.Repository.CWD;
-import static gitlet.Repository.OBJECT_DIR;
-import static gitlet.Stage.getBlobByID;
 import static gitlet.Utils.join;
-import static gitlet.Utils.writeObject;
 
-/**
- * Represents a gitlet commit object.
- * TODO: It's a good idea to give a description here of what else this Class
- * does at a high level.
- * <p>
- * * author abmdocrt
+/** Represents a gitlet commit object.
+ *
+ *  @author
  */
 public class Commit implements Serializable {
+
+    private static final Long serialVersionUID = 1623638566401599400L;
+
     /**
-     * TODO: add instance variables here.
-     *
      * List all instance variables of the Commit class here with a useful
      * comment above them describing what that variable represents and how that
      * variable is used. We've provided one example for `message`.
      */
 
-    /**
-     * The message of this Commit.
-     */
+    /** The message of this Commit. */
     private String message;
-
-    private Map<String, String> pathToBlobID = new HashMap<>();
-
-    private List<String> parents;
-
-    private Date currentTime;
 
     private String id;
 
-    private File commitSaveFileName;
-
     private String timeStamp;
 
+    private File commitSaveFilename;
 
-    /* TODO: fill in the rest of this class. */
+    private Map<String, String> filePathToBlobId;
 
-    public Commit(String message, Map<String, String> pathToBlobID, List<String> parents) {
-        this.message = message;
-        this.pathToBlobID = pathToBlobID;
-        this.parents = parents;
-        this.currentTime = new Date();
-        this.timeStamp = dateToTimeStamp(this.currentTime);
-        this.id = generateID();
-        this.commitSaveFileName = generateFileName();
-    }
+    private List<String> parents;
 
     public Commit() {
-        this.currentTime = new Date(0);
-        this.timeStamp = dateToTimeStamp(this.currentTime);
         this.message = "initial commit";
-        this.pathToBlobID = new HashMap<>();
+        this.timeStamp = dateToTimeStamp(new Date(0));
+        this.filePathToBlobId = new HashMap<>();
         this.parents = new ArrayList<>();
-        this.id = generateID();
-        this.commitSaveFileName = generateFileName();
+        this.id = Utils.sha1(message, timeStamp, filePathToBlobId.toString(), parents.toString());
+        this.commitSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
     }
 
-    private static String dateToTimeStamp(Date date) {
-        DateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
-        return dateFormat.format(date);
+    public Commit(String message, Map<String, String> filePathToBlobId, List<String> parents) {
+        this.message = message;
+        this.filePathToBlobId = filePathToBlobId;
+        this.parents = parents;
+        this.timeStamp = dateToTimeStamp(new Date());
+        this.id = Utils.sha1(message, timeStamp, filePathToBlobId.toString(), parents.toString());
+        this.commitSaveFilename = Utils.join(Repository.OBJECTS_DIR, id);
+    }
+
+    public void save() {
+        Utils.writeObject(commitSaveFilename, this);
+    }
+
+    private String dateToTimeStamp(Date date) {
+        return new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH)
+                .format(date);
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public Map<String, String> getFilePathToBlobId() {
+        return filePathToBlobId;
+    }
+
+    public boolean exists(String filePath) {
+        return filePathToBlobId.containsKey(filePath);
+    }
+
+    public List<String> getParents() {
+        return parents;
     }
 
     public String getMessage() {
@@ -84,73 +86,29 @@ public class Commit implements Serializable {
         return timeStamp;
     }
 
-    public Map<String, String> getPathToBlobID() {
-        return pathToBlobID;
-    }
-
-    public List<String> getBlobIDList(){
-        List<String> list = new ArrayList<>(pathToBlobID.values());
-        return list;
-    }
-
-
-    public List<String> getParentsCommitID() {
-        return parents;
-    }
-
-    public Date getCurrentTime() {
-        return currentTime;
-    }
-
-    public String getID() {
-        return id;
-    }
-
-    private String generateTimeStamp() {
-        DateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.CHINA);
-        return dateFormat.format(currentTime);
-    }
-
-    private String generateID() {
-        return Utils.sha1(generateTimeStamp(), message, parents.toString(), pathToBlobID.toString());
-    }
-
-
-    private File generateFileName() {
-        return join(OBJECT_DIR, id);
-    }
-
-    public void save() {
-        writeObject(commitSaveFileName, this);
-    }
-
-    public boolean exists(String filePath) {
-        return pathToBlobID.containsKey(filePath);
-    }
-
-    public List<String> getFileNames() {
-        List<String> fileName = new ArrayList<>();
-        List<Blob> blobList = getBlobList();
-        for (Blob b : blobList) {
-            fileName.add(b.getFileName());
-        }
-        return fileName;
-    }
-
-    private List<Blob> getBlobList() {
-        Blob blob;
+    public List<String> getFilenameList() {
+        List<String> filename = new ArrayList<>();
         List<Blob> blobList = new ArrayList<>();
-        for (String id : pathToBlobID.values()) {
-            blob = getBlobByID(id);
+        for (String id : filePathToBlobId.values()) {
+            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, id), Blob.class);
             blobList.add(blob);
         }
-        return blobList;
+
+        for (Blob blob : blobList) {
+            filename.add(blob.getFilename().getName());
+        }
+        return filename;
     }
 
-    public Blob getBlobByFileName(String fileName) {
-        File file = join(CWD, fileName);
+    public Blob getBlobByFilename(String filename) {
+        File file = join(CWD, filename);
         String path = file.getPath();
-        String blobID = pathToBlobID.get(path);
-        return getBlobByID(blobID);
+        String blobId = filePathToBlobId.get(path);
+        return Utils.readObject(Utils.join(Repository.OBJECTS_DIR, blobId), Blob.class);
     }
+
+    public List<String> getBlobIdList() {
+        return new ArrayList<>(filePathToBlobId.values());
+    }
+
 }
