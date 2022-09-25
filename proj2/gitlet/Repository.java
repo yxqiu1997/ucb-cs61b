@@ -295,9 +295,12 @@ public class Repository {
         List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
         List<String> idList = new ArrayList<>();
         for (String id : Objects.requireNonNull(commitList)) {
-            Commit commit = getCommitById(id);
-            if (message.equals(commit.getMessage())) {
-                idList.add(id);
+            try {
+                Commit commit = getCommitById(id);
+                if (message.equals(commit.getMessage())) {
+                    idList.add(id);
+                }
+            } catch (Exception ignored) {
             }
         }
         if (idList.isEmpty()) {
@@ -321,7 +324,18 @@ public class Repository {
                 }
             }
         }
-        System.out.println();
+        System.out.println("\n=== Staged Files ===");
+        addStage = readAddStage();
+        for (Blob blob : addStage.getBlobList()) {
+            System.out.println(blob.getFilename().getName());
+        }
+        System.out.println("\n=== Removed Files ===");
+        removeStage = readRemoveStage();
+        for (Blob blob : removeStage.getBlobList()) {
+            System.out.println(blob.getFilename().getName());
+        }
+        System.out.println("\n=== Modifications Not Staged For Commit ===");
+        System.out.println("\n=== Untracked Files ===");
     }
 
     public static void checkoutBranch(String branch) {
@@ -582,7 +596,6 @@ public class Repository {
         checkIfConflict(fileList, splitPoint, newCommit, mergedCommit);
 
         /* * case 2 4 7 3-1: do nothing */
-        //nothing to do here
 
         return computeMergedCommit(newCommit, overwriteFileList, writeFileList, deleteFileList);
     }
