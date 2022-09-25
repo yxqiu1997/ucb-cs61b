@@ -42,18 +42,18 @@ public class Repository {
 
     public static final File REMOVE_STAGE_FILE = join(GITLET_DIR, "remove_stage");
 
-    public static Commit currentCommit;
+    private static Commit currentCommit;
 
-    public static String currentBranch;
+    private static String currentBranch;
 
-    public static Stage addStage = new Stage();
+    private static Stage addStage = new Stage();
 
-    public static Stage removeStage = new Stage();
+    private static Stage removeStage = new Stage();
 
     public static void init() {
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists " +
-                    "in the current directory.");
+            System.out.println("A Gitlet version-control system already exists "
+                    + "in the current directory.");
             System.exit(0);
         }
         if (!GITLET_DIR.mkdir() || !OBJECTS_DIR.mkdir() || !REFS_DIR.mkdir()
@@ -123,8 +123,8 @@ public class Repository {
     }
 
     private static Commit getCurrentCommit() {
-        String currentBranch = getCurrentBranch();
-        String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranch));
+        String currentBranchName = getCurrentBranch();
+        String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranchName));
         File currentCommitFile = join(OBJECTS_DIR, currentCommitId);
         return readObject(currentCommitFile, Commit.class);
     }
@@ -187,9 +187,7 @@ public class Repository {
             }
         }
 
-        List<String> parents = new ArrayList<>(){{
-            add(getCurrentCommit().getId());
-        }};
+        List<String> parents = new ArrayList<>() {{add(getCurrentCommit().getId());}};
         return new Commit(message, blobMap, parents);
     }
 
@@ -220,8 +218,8 @@ public class Repository {
     }
 
     public static void log() {
-        String currentBranch = getCurrentBranch();
-        String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranch));
+        String currentBranchName = getCurrentBranch();
+        String currentCommitId = readContentsAsString(join(HEADS_DIR, currentBranchName));
         currentCommit = readObject(join(OBJECTS_DIR, currentCommitId), Commit.class);
         while (!currentCommit.getParents().isEmpty()) {
             if (isMergeCommit(currentCommit)) {
@@ -277,14 +275,11 @@ public class Repository {
         List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
         Commit commit;
         for (String id : commitList) {
-            try {
-                commit = getCommitById(id);
-                if (isMergeCommit(commit)) {
-                    printMergeCommit(commit);
-                } else {
-                    printCommit(commit);
-                }
-            } catch (Exception ignore) {
+            commit = getCommitById(id);
+            if (isMergeCommit(commit)) {
+                printMergeCommit(commit);
+            } else {
+                printCommit(commit);
             }
         }
     }
@@ -293,12 +288,9 @@ public class Repository {
         List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
         List<String> idList = new ArrayList<>();
         for (String id : Objects.requireNonNull(commitList)) {
-            try {
-                Commit commit = getCommitById(id);
-                if (message.equals(commit.getMessage())) {
-                    idList.add(id);
-                }
-            } catch (Exception ignored) {
+            Commit commit = getCommitById(id);
+            if (message.equals(commit.getMessage())) {
+                idList.add(id);
             }
         }
         if (idList.isEmpty()) {
@@ -390,8 +382,8 @@ public class Repository {
         for (String fileName : onlyNewCommitTracked) {
             File file = join(CWD, fileName);
             if (file.exists()) {
-                System.out.println("There is an untracked file in the way; delete it, " +
-                        "or add and commit it first.");
+                System.out.println("There is an untracked file in the way; delete it, "
+                        + "or add and commit it first.");
                 System.exit(0);
             }
         }
@@ -555,10 +547,9 @@ public class Repository {
         String message = "Merged " + mergedBranch + " into " + currentBranch + ".";
         String currentBranchCommitId = getCommitByBranchName(currentBranch).getId();
         String mergeBranchCommitId = getCommitByBranchName(mergedBranch).getId();
-        List<String> parents = new ArrayList<>(){{
-            add(currentBranchCommitId);
-            add(mergeBranchCommitId);
-        }};
+        List<String> parents = new ArrayList<>();
+        parents.add(currentBranchCommitId);
+        parents.add(mergeBranchCommitId);
         Commit newCommit = new Commit(message, currCommitBlobs, parents);
 
         Commit mergeCommit = mergeFilesToNewCommit(splitPoint, newCommit, mergedCommit);
@@ -567,11 +558,10 @@ public class Repository {
 
     private static Commit mergeFilesToNewCommit(Commit splitPoint, Commit newCommit,
                                                 Commit mergedCommit) {
-        Set<String> fileSet = new HashSet<>(){{
-            addAll(splitPoint.getBlobIdList());
-            addAll(newCommit.getBlobIdList());
-            addAll(mergedCommit.getBlobIdList());
-        }};
+        Set<String> fileSet = new HashSet<>();
+        fileSet.addAll(splitPoint.getBlobIdList());
+        fileSet.addAll(newCommit.getBlobIdList());
+        fileSet.addAll(mergedCommit.getBlobIdList());
         List<String> fileList = new ArrayList<>(fileSet);
         /*
          * case 1 5 6: write mergeCommit files into newCommit

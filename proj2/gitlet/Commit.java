@@ -89,8 +89,8 @@ public class Commit implements Serializable {
     public List<String> getFilenameList() {
         List<String> filename = new ArrayList<>();
         List<Blob> blobList = new ArrayList<>();
-        for (String id : filePathToBlobId.values()) {
-            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, id), Blob.class);
+        for (String blobId : filePathToBlobId.values()) {
+            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, blobId), Blob.class);
             blobList.add(blob);
         }
 
