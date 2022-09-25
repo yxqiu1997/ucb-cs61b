@@ -49,7 +49,7 @@ public class Stage implements Serializable {
     public List<Blob> getBlobList() {
         List<Blob> blobList = new ArrayList<>();
         for (String id : filenameToBlobId.values()) {
-            Blob blob = Utils.readObject(Utils.join(Repository.OBJECTS_DIR, id), Blob.class);
+            Blob blob = Utils.readObject(Utils.join(Repository.BLOBS_DIR, id), Blob.class);
             blobList.add(blob);
         }
         return blobList;
