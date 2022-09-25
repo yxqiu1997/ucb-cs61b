@@ -1,7 +1,5 @@
 package gitlet;
 
-import org.apache.commons.collections.CollectionUtils;
-
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -9,8 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
-
-import static gitlet.Utils.readObject;
 
 /** Represents a gitlet repository.
  *
@@ -240,7 +236,7 @@ public class Repository {
         StringBuilder sb = new StringBuilder();
         Commit commit = getHeadCommit();
         while (commit != null) {
-            sb.append(commit.getTimeStampString());
+            sb.append(commit.getCommitInfo());
             commit = getCommitFromCommitId(commit.getFirstParentId());
         }
         System.out.println(sb);
