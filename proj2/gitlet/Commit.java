@@ -61,6 +61,10 @@ public class Commit implements Serializable {
         return message;
     }
 
+    public List<String> getParents() {
+        return parents;
+    }
+
     public String getFirstParentId() {
         return this.parents == null || this.parents.isEmpty() ? "null" : this.parents.get(0);
     }

@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
+import static gitlet.Utils.restrictedDelete;
+
 /** Represents a gitlet repository.
  *
  *  @author Qiu Yuxuan
@@ -468,6 +470,252 @@ public class Repository {
             }
         }
         return "";
+    }
+
+    public void branch(String branch) {
+        File branchFile = Utils.join(HEADS_DIR, branch);
+        if (branchFile.exists()) {
+            System.out.println("A branch with that name already exists.");
+            System.exit(0);
+        }
+        File file = getBranchFile(Utils.readContentsAsString(HEAD));
+        Utils.writeContents(branchFile, Utils.readContentsAsString(file));
+    }
+
+    public void rmBranch(String branch) {
+        File branchFile = Utils.join(HEADS_DIR, branch);
+        if (!branchFile.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        String headBranch = Utils.readContentsAsString(HEAD);
+        if (branch.equals(headBranch)) {
+            System.out.println("Cannot remove the current branch.");
+            System.exit(0);
+        }
+        branchFile.delete();
+    }
+
+    public void reset(String commitId) {
+        File file = Utils.join(COMMITS_DIR, commitId);
+        if (!file.exists()) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        }
+        Commit commit = getCommitFromCommitId(commitId);
+        checkUntrackedFile(commit.getBlobs());
+        replaceWorkingDirectory(commit);
+        clearStage(Utils.readObject(STAGE, Stage.class));
+
+        // Moves the current branch’s head to that commit node.
+        String headBranch = Utils.readContentsAsString(HEAD);
+        Utils.writeContents(Utils.join(HEADS_DIR, headBranch), commitId);
+    }
+
+    public void merge(String mergedBranch) {
+        Stage stage = Utils.readObject(STAGE, Stage.class);
+        if (!stage.isEmpty()) {
+            System.out.println("You have uncommitted changes.");
+            System.exit(0);
+        }
+        File mergedFile = getBranchFile(mergedBranch);
+        if (!mergedFile.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        String headBranch = Utils.readContentsAsString(HEAD);
+        if (mergedBranch.equals(headBranch)) {
+            System.out.println("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
+
+        Commit head = getCommitFromBranchFile(getBranchFile(headBranch));
+        Commit merged = getCommitFromBranchFile(mergedFile);
+        Commit latestCommonAncestor = getLatestCommonAncestorCommit(head, merged);
+
+        // 1. current -> given
+        if (merged.getId().equals(latestCommonAncestor.getId())) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        }
+        // 2. given -> current
+        if (head.getId().equals(latestCommonAncestor.getId())) {
+            checkoutBranch(mergedBranch);
+            System.out.println("Current branch fast-forwarded.");
+            return;
+        }
+        // 3. merge
+
+    }
+
+    private void merge(Commit head, Commit merged, Commit lca) {
+        Set<String> filenameSet = new HashSet<>(){{
+            addAll(head.getBlobs().keySet());
+            addAll(merged.getBlobs().keySet());
+            addAll(lca.getBlobs().keySet());
+        }};
+        List<String> removeList = new LinkedList<>();
+        List<String> rewriteList = new LinkedList<>();
+        List<String> conflictList = new LinkedList<>();
+
+        for (String filename : filenameSet) {
+            String headId = head.getBlobs().getOrDefault(filename, "");
+            String mergedId= merged.getBlobs().getOrDefault(filename, "");
+            String lcaId = lca.getBlobs().getOrDefault(filename, "");
+            if (mergedId.equals(headId) || mergedId.equals(lcaId)) {
+                continue;
+            }
+            if (lcaId.equals(headId)) {
+                if ("".equals(mergedId)) {
+                    removeList.add(filename);
+                } else {
+                    rewriteList.add(filename);
+                }
+            } else {
+                conflictList.add(filename);
+            }
+        }
+
+        List<String> untrackedFilelist = getUntrackedFileList();
+        for (String filename : untrackedFilelist) {
+            if (removeList.contains(filename) || rewriteList.contains(filename)
+                    || conflictList.contains(filename)) {
+                System.out.println("There is an untracked file in the way; delete it, " +
+                        "or add and commit it first.");
+                System.exit(0);
+            }
+        }
+        if (!removeList.isEmpty()) {
+            for (String filename : removeList) {
+                remove(filename);
+            }
+        }
+        if (!rewriteList.isEmpty()) {
+            for (String filename : rewriteList) {
+                String mergeId = merged.getBlobs().getOrDefault(filename, "");
+                Blob blob = Utils.readObject(Utils.join(BLOBS_DIR, mergeId), Blob.class);
+                Utils.writeContents(Utils.join(CWD, blob.getFilename()), blob.getContents());
+                add(filename);
+            }
+        }
+        if (!conflictList.isEmpty()) {
+            for (String filename : conflictList) {
+                String headId = head.getBlobs().getOrDefault(filename, "");
+                String mergedId = merged.getBlobs().getOrDefault(filename, "");
+                String headContent = getContentAsStringFromBlobId(headId);
+                String mergedContent = getContentAsStringFromBlobId(mergedId);
+                String content = getConflictFile(headContent.split("\n"),
+                        mergedContent.split("\n"));
+                Utils.writeContents(Utils.join(CWD, filename), content);
+                System.out.println("Encountered a merge conflict.");
+            }
+        }
+    }
+
+    private String getConflictFile(String[] head, String[] merged) {
+        StringBuilder sb = new StringBuilder();
+        int len1 = head.length, len2 = merged.length;
+        int i = 0, j = 0;
+        while (i < len1 && j < len2) {
+            if (head[i].equals(merged[j])) {
+                sb.append(head[i]);
+            } else {
+                sb.append(getConflictContent(head[i], merged[j]));
+            }
+            i++;
+            j++;
+        }
+        // head.len > other.len
+        while (i < len1) {
+            sb.append(getConflictContent(head[i], ""));
+            i++;
+        }
+        // head.len < other.len
+        while (j < len1) {
+            sb.append(getConflictContent("", merged[j]));
+            j++;
+        }
+        return sb.toString();
+    }
+
+    private String getConflictContent(String head, String other) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<<<<<<< HEAD\n");
+        // contents of file in current branch
+        sb.append("".equals(head) ? head : head + "\n");
+        sb.append("=======\n");
+        // contents of file in given branch
+        sb.append("".equals(other) ? other : other + "\n");
+        sb.append(">>>>>>>\n");
+        return sb.toString();
+    }
+
+    private String getContentAsStringFromBlobId(String blobId) {
+        return "".equals(blobId) ? ""
+                : Utils.readObject(Utils.join(BLOBS_DIR, blobId), Blob.class).getContentAsString();
+    }
+
+    private void remove(String filename) {
+        File file = Utils.join(CWD, filename);
+        Commit head = getHeadCommit();
+        Stage stage = Utils.readObject(STAGE, Stage.class);
+        String headId = head.getBlobs().getOrDefault(filename, "");
+        String stageId = stage.getAdded().getOrDefault(filename, "");
+        if ("".equals(headId) && "".equals(stageId)) {
+            System.out.println("No reason to remove the file.");
+            System.exit(0);
+        }
+
+        // Unstage the file if it is currently staged for addition.
+        if (!"".equals(stageId)) {
+            stage.getAdded().remove(filename);
+        } else {
+            // stage it for removal
+            stage.getRemoved().add(filename);
+        }
+
+        Blob blob = new Blob(filename, CWD);
+        String blobId = blob.getId();
+        if (blob.isExist() && blobId.equals(headId)) {
+            Utils.restrictedDelete(file);
+        }
+        Utils.writeObject(STAGE, stage);
+    }
+
+    private Commit getLatestCommonAncestorCommit(Commit head, Commit merged) {
+        Set<String> headAncestorSet = bfsFromCommit(head);
+        Queue<Commit> queue = new LinkedList<>(){{
+            add(merged);
+        }};
+        while (!queue.isEmpty()) {
+            Commit commit = queue.poll();
+            if (headAncestorSet.contains(commit.getId())) {
+                return commit;
+            }
+            if (!commit.getParents().isEmpty()) {
+                for (String id : commit.getParents()) {
+                    queue.add(getCommitFromCommitId(id));
+                }
+            }
+        }
+        return new Commit();
+    }
+
+    private Set<String> bfsFromCommit(Commit head) {
+        Set<String> set = new HashSet<>();
+        Queue<Commit> queue = new LinkedList<>(){{
+            add(head);
+        }};
+        while (!queue.isEmpty()) {
+            Commit commit = queue.poll();
+            if (!set.contains(commit.getId()) && !commit.getParents().isEmpty()) {
+                for (String id : commit.getParents()) {
+                    queue.add(getCommitFromCommitId(id));
+                }
+            }
+            set.add(commit.getId());
+        }
+        return set;
     }
 
 }

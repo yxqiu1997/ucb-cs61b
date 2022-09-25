@@ -73,6 +73,27 @@ public class Main {
                     System.out.println("Incorrect operands.");
                     System.exit(0);
                 }
+                break;
+            case "branch":
+                repository.checkOperands(args.length, 2);
+                repository.checkInitialiseDirectoryExists();
+                repository.branch(args[1]);
+                break;
+            case "rm-branch":
+                repository.checkOperands(args.length, 2);
+                repository.checkInitialiseDirectoryExists();
+                repository.rmBranch(args[1]);
+                break;
+            case "reset":
+                repository.checkOperands(args.length, 2);
+                repository.checkInitialiseDirectoryExists();
+                repository.reset(args[1]);
+                break;
+            case "merge":
+                repository.checkOperands(args.length, 2);
+                repository.checkInitialiseDirectoryExists();
+                repository.merge(args[1]);
+                break;
             default:
         }
     }
