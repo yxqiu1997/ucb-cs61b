@@ -14,7 +14,7 @@ import static gitlet.Utils.join;
  */
 public class Commit implements Serializable {
 
-    private static final Long serialVersionUID = 1623638566401599400L;
+    private static final Long serialVersionUID = -7961947390106190044L;
 
     /**
      * List all instance variables of the Commit class here with a useful

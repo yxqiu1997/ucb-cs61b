@@ -150,8 +150,8 @@ public class Repository {
         removeStage.saveRemoveStage();
 
         currentCommit = commit;
-        String currentBranch = getCurrentBranch();
-        writeContents(join(HEADS_DIR, currentBranch), currentCommit.getId());
+        String currentBranchName = getCurrentBranch();
+        writeContents(join(HEADS_DIR, currentBranchName), currentCommit.getId());
     }
 
     private static Commit getNewCommit(String message) {
@@ -187,7 +187,8 @@ public class Repository {
             }
         }
 
-        List<String> parents = new ArrayList<>() {{add(getCurrentCommit().getId());}};
+        List<String> parents = new ArrayList<>();
+        parents.add(getCurrentCommit().getId());
         return new Commit(message, blobMap, parents);
     }
 
@@ -273,13 +274,15 @@ public class Repository {
 
     public static void globalLog() {
         List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
-        Commit commit;
         for (String id : commitList) {
-            commit = getCommitById(id);
-            if (isMergeCommit(commit)) {
-                printMergeCommit(commit);
-            } else {
-                printCommit(commit);
+            try {
+                Commit commit = getCommitById(id);
+                if (isMergeCommit(commit)) {
+                    printMergeCommit(commit);
+                } else {
+                    printCommit(commit);
+                }
+            } catch (Exception ignored) {
             }
         }
     }
@@ -288,9 +291,12 @@ public class Repository {
         List<String> commitList = plainFilenamesIn(OBJECTS_DIR);
         List<String> idList = new ArrayList<>();
         for (String id : Objects.requireNonNull(commitList)) {
-            Commit commit = getCommitById(id);
-            if (message.equals(commit.getMessage())) {
-                idList.add(id);
+            try {
+                Commit commit = getCommitById(id);
+                if (message.equals(commit.getMessage())) {
+                    idList.add(id);
+                }
+            } catch (Exception ignored) {
             }
         }
         if (idList.isEmpty()) {
