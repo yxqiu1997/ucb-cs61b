@@ -23,7 +23,19 @@ public class Blob implements Serializable {
         }
     }
 
+    public boolean isExist() {
+        return this.contents != null;
+    }
+
     public String getId() {
         return id;
+    }
+
+    public byte[] getContents() {
+        return contents;
+    }
+
+    public String getFilename() {
+        return filename;
     }
 }
