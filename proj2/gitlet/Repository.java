@@ -207,9 +207,7 @@ public class Repository {
             Blob removeBlob = getBlobByFilePath(filePath, currentCommit);
             removeStage.add(removeBlob);
             removeStage.saveRemoveStage();
-            if (!file.delete()) {
-                throw new IllegalArgumentException("Failed to delete file");
-            }
+            file.delete();
         } else {
             System.out.println("No reason to remove the file.");
             System.exit(0);
