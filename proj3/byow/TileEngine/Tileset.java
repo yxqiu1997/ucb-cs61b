@@ -1,24 +1,27 @@
 package byow.TileEngine;
 
-import java.awt.Color;
+import java.awt.*;
+
+import static byow.Core.Utils.CWD;
+import static byow.Core.Utils.join;
 
 /**
  * Contains constant tile objects, to avoid having to remake the same tiles in different parts of
  * the code.
- *
+ * <p>
  * You are free to (and encouraged to) create and add your own tiles to this file. This file will
  * be turned in with the rest of your code.
- *
+ * <p>
  * Ex:
- *      world[x][y] = Tileset.FLOOR;
- *
+ * world[x][y] = Tileset.FLOOR;
+ * <p>
  * The style checker may crash when you try to style check this file due to use of unicode
  * characters. This is OK.
  */
 
 public class Tileset {
     public static final TETile AVATAR = new TETile('@', Color.white, Color.black, "you");
-    public static final TETile WALL = new TETile('#', new Color(216, 128, 128), Color.darkGray,
+    public static final TETile WALL = new TETile(' ', new Color(175, 168, 168), Color.darkGray,
             "wall");
     public static final TETile FLOOR = new TETile('·', new Color(128, 192, 128), Color.black,
             "floor");
@@ -33,6 +36,10 @@ public class Tileset {
     public static final TETile SAND = new TETile('▒', Color.yellow, Color.black, "sand");
     public static final TETile MOUNTAIN = new TETile('▲', Color.gray, Color.black, "mountain");
     public static final TETile TREE = new TETile('♠', Color.green, Color.black, "tree");
+    public static final TETile ROOM = new TETile('·', Color.darkGray, Color.black, "room");
+    public static final TETile MIZUKI = new TETile('M', Color.black, Color.black, "Mizuki",
+            join(CWD, "byow", "data", "src", "minimizuki.png").toString());
+    public static final TETile ENTRY = new TETile('*', Color.darkGray, Color.black, "entry");
 }
 
 
